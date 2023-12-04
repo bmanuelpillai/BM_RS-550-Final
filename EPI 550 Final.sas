@@ -2,8 +2,11 @@ libname d 'C:\Users\Bevin\Desktop\Final';
 proc print data=d.fham;
 RUN;
 /*Part A Table 1*/
-/*Overall Rates*/
-
+/*Sample Size*/
+proc freq data=d.fham;
+	where PERIOD = 1;
+	tables hyperten;
+run;
 /*Distribution of Sex variable*/
 proc freq data=d.fham;
 	where PERIOD = 1;
@@ -107,6 +110,7 @@ proc lifetest data=d.fham;
 	id RANDID;
 run;
 
+
 /*Part C*/
 /*Graphically*/
 proc lifetest data= d.fham method = km plots = lls;
@@ -120,3 +124,36 @@ proc phreg data = d.fham;
 	assess ph / resample seed = 550;
 run;
 
+
+/*Part E*/
+/*Question 1*/
+proc logistic data = d.fham;
+	where PERIOD = 1;
+	model DEATH (event = '1') = HYPERTEN BMI AGE SEX EDUC CURSMOKE;
+run;
+
+/*Question 2*/
+/* Create offset*/
+data d.fham;
+	set d.fham;
+	ln_n = log(n);
+run;
+
+/* Run the Poisson Regression Model */
+proc genmod data=d.fham;
+    where PERIOD = 1;
+	class randid;
+    model DEATH = HYPERTEN BMI AGE SEX EDUC CURSMOKE / dist=poisson link=log;
+    repeated subject=randid / type=unstr; 
+	estimate 'HYPERTEN v. DEATH' Hyperten 1;
+run;
+
+/*Part F*/
+/* Recode BMI*/
+data d.fham;
+	set d.fham;
+	if missing(BMI) then BMI_category_numeric = .;
+	if BMI < 25 then BMI_C = 0;
+	else if 25 <= BMI < 30 then BMI_C = 1;
+	else BMI_C = 3;
+run;
