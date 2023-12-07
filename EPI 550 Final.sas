@@ -112,18 +112,134 @@ run;
 
 
 /*Part C*/
+/*Variable 1 (Age at Baseline)*/
 /*Graphically*/
-proc lifetest data= d.fham method = km plots = lls;
+/*Creating 2 Groups for Continuous Variable of Age*/
+proc means data=d.fham median;
+	var AGE_BL;
+run;
+/*Median is 49*/
+data d.fham2;
+	set d.fham;
+	if AGE_BL <= 49 then AGE_BL_GROUP = 0;
+	else AGE_BL_GROUP = 1;
+run;
+proc lifetest data= d.fham2 method = km plots = lls;
 	time TIMEDTH*DEATH(0);
-	strata AGE;
+	strata AGE_BL_GROUP;
+run;
+
+/*Creating 3 Groups for Continuous Variable of Age*/
+proc univariate data=d.fham;
+	var AGE_BL;
+	output out=quartile_data 
+	pctlpts = 33 66
+	pctlpre=Q_;
+run;
+/*Q1 = 42  Q3 = 56*/
+data d.fham3;
+	set d.fham;
+	if AGE_BL <= 42 then AGE_BL_GROUP = 0;
+	else if 42 < AGE_BL <= 56 then AGE_BL_GROUP = 1;
+	else AGE_BL_GROUP = 2;
+run;
+proc lifetest data= d.fham3 method = km plots = lls;
+	time TIMEDTH*DEATH(0);
+	strata AGE_BL_GROUP;
 run;
 
 /*Goodness-of-fit-tests*/
 proc phreg data = d.fham;
-	model TIMEDTH*DEATH(0) = AGE;
+	model TIMEDTH*DEATH(0) = AGE_BL;
 	assess ph / resample seed = 550;
 run;
+/*Time-Dependent covariates*/
+/*g(t) = t*/
+proc phreg data = d.fham;
+	model TIMEDTH*DEATH(0) = AGE_BL AGE_BL_t;
+	AGE_BL_t = AGE_BL*TIMEDTH;
+run;
 
+/*g(t) = ln(t)*/
+proc phreg data = d.fham;
+	model TIMEDTH*DEATH(0) = AGE_BL AGE_BL_lnt;
+	AGE_BL_lnt = AGE_BL*log(TIMEDTH);
+run;
+
+/*Variable 2 (Education)*/
+/*Graphically*/
+proc lifetest data= d.fham method = km plots = lls;
+	time TIMEDTH*DEATH(0);
+	strata EDUC;
+run;
+
+/*Goodness-of-fit-tests*/
+proc phreg data = d.fham;
+	model TIMEDTH*DEATH(0) = EDUC;
+	assess ph / resample seed = 550;
+run;
+/*Time-Dependent covariates*/
+/*g(t) = t*/
+proc phreg data = d.fham;
+	model TIMEDTH*DEATH(0) = EDUC EDUC_t;
+	EDUC_t = EDUC*TIMEDTH;
+run;
+
+/*g(t) = ln(t)*/
+proc phreg data = d.fham;
+	model TIMEDTH*DEATH(0) = EDUC EDUC_lnt;
+	EDUC_lnt = EDUC*log(TIMEDTH);
+run;
+
+/*Variable 3 (Prevalent Hypertension at Baseline)*/
+/*Graphically*/
+proc lifetest data= d.fham method = km plots = lls;
+	time TIMEDTH*DEATH(0);
+	strata HYPERTEN_BL;
+run;
+
+/*Goodness-of-fit-tests*/
+proc phreg data = d.fham;
+	model TIMEDTH*DEATH(0) = HYPERTEN_BL;
+	assess ph / resample seed = 550;
+run;
+/*Time-Dependent covariates*/
+/*g(t) = t*/
+proc phreg data = d.fham;
+	model TIMEDTH*DEATH(0) = HYPERTEN_BL HYPERTEN_BL_t;
+	HYPERTEN_BL_t = HYPERTEN_BL*TIMEDTH;
+run;
+
+/*g(t) = ln(t)*/
+proc phreg data = d.fham;
+	model TIMEDTH*DEATH(0) = HYPERTEN_BL HYPERTEN_BL_lnt;
+	HYPERTEN_BL_lnt = HYPERTEN_BL*log(TIMEDTH);
+run;
+
+/*Variable 4 (Sex)*/
+/*Graphically*/
+proc lifetest data= d.fham method = km plots = lls;
+	time TIMEDTH*DEATH(0);
+	strata SEX;
+run;
+
+/*Goodness-of-fit-tests*/
+proc phreg data = d.fham;
+	model TIMEDTH*DEATH(0) = SEX;
+	assess ph / resample seed = 550;
+run;
+/*Time-Dependent covariates*/
+/*g(t) = t*/
+proc phreg data = d.fham;
+	model TIMEDTH*DEATH(0) = SEX SEX_t;
+	SEX_t = SEX*TIMEDTH;
+run;
+
+/*g(t) = ln(t)*/
+proc phreg data = d.fham;
+	model TIMEDTH*DEATH(0) = SEX SEX_lnt;
+	SEX_lnt = SEX*log(TIMEDTH);
+run;
 
 /*Part E*/
 /*Question 1*/
@@ -149,11 +265,22 @@ proc genmod data=d.fham;
 run;
 
 /*Part F*/
-/* Recode BMI*/
+/*RecodeBMI */
 data d.fham;
 	set d.fham;
-	if missing(BMI) then BMI_category_numeric = .;
-	if BMI < 25 then BMI_C = 0;
-	else if 25 <= BMI < 30 then BMI_C = 1;
-	else BMI_C = 3;
+	if missing(BMI) then do; BMI_OW = .; BMI_OB = .; end;
+	else if 25 <= BMI < 30 then do; BMI_OW = 1; BMI_OB = 0; end;
+	else if BMI >= 30 then do; BMI_OW = 0; BMI_OB = 1; end;
+	else do; BMI_OW = 0; BMI_OB = 0; end;
+run;
+
+/* LRT Test */
+data d.fham_CHD;
+	set d.fham;
+	where PRECHD = 0;
+run;
+
+proc genmod data = d.fham_CHD descending;
+	model HYPERTEN (event = '1') = BMI_OW BMI_OB CURSMOKE SEX BMI_OW*SEX BMI_OB*SEX CURSMOKE*SEX / dist = bin link = logit;
+	contrast 'chunk test for interaction assessment' BMI_OW*SEX 1, BMI_OB*SEX 1, CURSMOKE*SEX 1;
 run;
