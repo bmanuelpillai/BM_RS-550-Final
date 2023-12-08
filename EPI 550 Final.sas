@@ -1,6 +1,8 @@
 libname d 'C:\Users\Bevin\Desktop\Final';
 proc print data=d.fham;
 RUN;
+
+
 /*Part A Table 1*/
 /*Sample Size*/
 proc freq data=d.fham;
@@ -100,6 +102,7 @@ proc freq data=d.fham;
 	where hyperten = 0;
 	tables CURSMOKE;
 run;
+
 
 /*Part B*/
 /*Kaplan-Meier curve*/
@@ -241,6 +244,7 @@ proc phreg data = d.fham;
 	SEX_lnt = SEX*log(TIMEDTH);
 run;
 
+
 /*Part D*/
 proc phreg data = d.fham covs(aggregate) covm;
 	model TIMEDTH*DEATH(0) = AGE_BL BMI CURSMOKE HYPERTEN_BL_gt1 HYPERTEN_BL_gt2 HYPERTEN_BL_gt3 HYPERTEN_BL_gt4;
@@ -264,7 +268,6 @@ proc phreg data = d.fham covs(aggregate) covm;
 run;
 
 
-
 /*Part E*/
 /*Question 1*/
 proc logistic data = d.fham;
@@ -273,12 +276,6 @@ proc logistic data = d.fham;
 run;
 
 /*Question 2*/
-/* Create offset*/
-data d.fham;
-	set d.fham;
-	ln_n = log(n);
-run;
-
 /* Run the Poisson Regression Model */
 proc genmod data=d.fham;
     where PERIOD = 1;
@@ -288,23 +285,63 @@ proc genmod data=d.fham;
 	estimate 'HYPERTEN v. DEATH' Hyperten 1;
 run;
 
+
 /*Part F*/
-/*RecodeBMI */
+/*Recode BMI */
 data d.fham;
 	set d.fham;
-	if missing(BMI) then do; BMI_OW = .; BMI_OB = .; end;
-	else if 25 <= BMI < 30 then do; BMI_OW = 1; BMI_OB = 0; end;
-	else if BMI >= 30 then do; BMI_OW = 0; BMI_OB = 1; end;
-	else do; BMI_OW = 0; BMI_OB = 0; end;
+	BMI_OW = 0;
+	BMI_OB = 0;
+	if missing(BMI) then BMI_OW = .;
+	if missing(BMI) then BMI_OB = .;
+	if 25 <= BMI < 30 then BMI_OW = 1;
+	if BMI >= 30 then BMI_OB = 1;
+run;
+
+proc print data = d.fham;
+	var bmi bmi_ow bmi_ob;
+run;
+
+/*Hazard Ratios*/
+proc univariate data = d.fham;
+	var SEX;
+run;
+
+/* Overweight*/
+proc phreg data =d.fham;
+	model TIMECHD*PREVCHD(1) = BMI_OW SEX BMI_OW*SEX/RL;
+	contrast 'males' BMI_OW 1 BMI_OW*SEX 1 / estimate = exp;
+	contrast 'females' BMI_OW 1 BMI_OW*SEX 2 / estimate = exp;
+run;
+
+/*Obesity*/
+proc phreg data =d.fham;
+	model TIMECHD*PREVCHD(1) = BMI_OB SEX BMI_OB*SEX/RL;
+	contrast 'males' BMI_OB 1 BMI_OB*SEX 1 / estimate = exp;
+	contrast 'females' BMI_OB 1 BMI_OB*SEX 2 / estimate = exp;
 run;
 
 /* LRT Test */
 data d.fham_CHD;
 	set d.fham;
-	where PRECHD = 0;
+	where PREVCHD = 0;
 run;
 
-proc genmod data = d.fham_CHD descending;
-	model HYPERTEN (event = '1') = BMI_OW BMI_OB CURSMOKE SEX BMI_OW*SEX BMI_OB*SEX CURSMOKE*SEX / dist = bin link = logit;
-	contrast 'chunk test for interaction assessment' BMI_OW*SEX 1, BMI_OB*SEX 1, CURSMOKE*SEX 1;
+/*Full model*/
+proc logistic data = d.fham;
+	model PREVCHD (event = '1') = BMI_OW BMI_OB CURSMOKE SEX BMI_OW*SEX BMI_OB*SEX CURSMOKE*SEX;
 run;
+
+/*Reduced model*/
+proc logisitic data = d.fham;
+	model PREVCHD (event = '1') = BMI_OW BMI_OB CURSMOKE SEX;
+run;
+
+/*p-value calculation*/
+data one;
+	p = 1 - probchi(26.387, 3);
+run;
+
+proc print data = one;
+run;
+
