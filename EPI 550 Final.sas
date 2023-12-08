@@ -241,6 +241,30 @@ proc phreg data = d.fham;
 	SEX_lnt = SEX*log(TIMEDTH);
 run;
 
+/*Part D*/
+proc phreg data = d.fham covs(aggregate) covm;
+	model TIMEDTH*DEATH(0) = AGE_BL BMI CURSMOKE HYPERTEN_BL_gt1 HYPERTEN_BL_gt2 HYPERTEN_BL_gt3 HYPERTEN_BL_gt4;
+	id RANDID;
+	gt1 = 0;
+	gt2 = 0;
+	gt3 = 0;
+	gt4 = 0;
+	if TIMEDTH ge 0 and TIMEDTH lt 2000 then gt1 = 1;
+	if TIMEDTH ge 2000 and TIMEDTH lt 4000 then gt2 = 1;
+	if TIMEDTH ge 4000 and TIMEDTH lt 6000 then gt3 = 1;
+	if TIMEDTH ge 6000 then gt4 = 1;
+	HYPERTEN_BL_gt1 = HYPERTEN*gt1;
+	HYPERTEN_BL_gt2 = HYPERTEN*gt2;
+	HYPERTEN_BL_gt3 = HYPERTEN*gt3;
+	HYPERTEN_BL_gt4 = HYPERTEN*gt4;
+	contrast 'HR - GT1' HYPERTEN_BL_gt1 1 / estimate = exp;
+	contrast 'HR - GT2' HYPERTEN_BL_gt2 1 / estimate = exp;
+	contrast 'HR - GT3' HYPERTEN_BL_gt3 1 / estimate = exp;
+	contrast 'HR - GT4' HYPERTEN_BL_gt4 1 / estimate = exp;
+run;
+
+
+
 /*Part E*/
 /*Question 1*/
 proc logistic data = d.fham;
