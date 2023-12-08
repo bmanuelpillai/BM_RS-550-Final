@@ -321,6 +321,7 @@ proc phreg data =d.fham;
 	contrast 'females' BMI_OB 1 BMI_OB*SEX 2 / estimate = exp;
 run;
 
+/*Q2*/
 /* LRT Test */
 data d.fham_CHD;
 	set d.fham;
@@ -331,17 +332,29 @@ run;
 proc logistic data = d.fham;
 	model PREVCHD (event = '1') = BMI_OW BMI_OB CURSMOKE SEX BMI_OW*SEX BMI_OB*SEX CURSMOKE*SEX;
 run;
-
 /*Reduced model*/
 proc logisitic data = d.fham;
 	model PREVCHD (event = '1') = BMI_OW BMI_OB CURSMOKE SEX;
 run;
-
 /*p-value calculation*/
 data one;
 	p = 1 - probchi(26.387, 3);
 run;
-
 proc print data = one;
 run;
 
+/*Q3*/
+/*Full model*/
+proc logistic data = d.fham;
+	model PREVCHD (event = '1') = BMI_OW BMI_OB CURSMOKE SEX BMI_OW*CURSMOKE BMI_OB*CURSMOKE CURSMOKE*SEX;
+run;
+/*Reduced model*/
+proc logisitic data = d.fham;
+	model PREVCHD (event = '1') = BMI_OW BMI_OB CURSMOKE SEX;
+run;
+/*p-value calculation*/
+data two;
+	p = 1 - probchi(6.2, 3);
+run;
+proc print data = two;
+run;
