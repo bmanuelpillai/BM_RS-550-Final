@@ -180,6 +180,7 @@ run;
 /*Variable 2 (Education)*/
 /*Graphically*/
 proc lifetest data= d.fham method = km plots = lls;
+	where PERIOD = 1;
 	time TIMEDTH*DEATH(0);
 	strata EDUC;
 run;
@@ -208,6 +209,7 @@ run;
 /*Variable 3 (Prevalent Hypertension at Baseline)*/
 /*Graphically*/
 proc lifetest data= d.fham method = km plots = lls;
+	where PERIOD = 1;
 	time TIMEDTH*DEATH(0);
 	strata HYPERTEN_BL;
 run;
@@ -236,6 +238,7 @@ run;
 /*Variable 4 (Sex)*/
 /*Graphically*/
 proc lifetest data= d.fham method = km plots = lls;
+	where PERIOD = 1;
 	time TIMEDTH*DEATH(0);
 	strata SEX;
 run;
@@ -306,8 +309,9 @@ run;
 /*Part F*/
 /*FQ1*/
 /*Recode BMI */
-data d.fham;
+data d.fham_CHD;
 	set d.fham;
+	where PREVCHD = 0 and PERIOD = 1;
 	BMI_OW = 0;
 	BMI_OB = 0;
 	if missing(BMI) then BMI_OW = .;
@@ -316,12 +320,9 @@ data d.fham;
 	if BMI >= 30 then BMI_OB = 1;
 run;
 
-proc print data = d.fham;
-	var bmi bmi_ow bmi_ob;
-run;
 /* New Stuff for FQ1*/
 /*Hazard Ratios*/
-proc phreg data = d.fham covs(aggregate) covm;;
+proc phreg data = d.fham_CHD covs(aggregate) covm;;
 	model TIMECHD*PREVCHD(1) = BMI_OW BMI_OB SEX CURSMOKE BMI_OW*SEX BMI_OB*SEX CURSMOKE*SEX/RL;
 	id RANDID;
 	strata sex;
@@ -333,11 +334,6 @@ run;
 
 /*FQ2*/
 /* LRT Test */
-data d.fham_CHD;
-    set d.fham;
-    where PREVCHD = 0 and PERIOD = 1;
-run;
-
 /*Full Model Revised*/
 proc phreg data = d.fham_CHD covs(aggregate) covm;;
 	model TIMECHD*PREVCHD(1) = BMI_OW BMI_OB SEX CURSMOKE BMI_OW*SEX BMI_OB*SEX CURSMOKE*SEX/RL;
@@ -364,7 +360,7 @@ run;
 /* New Stuff for FQ3*/
 /*Confounding Assessment*/
 /* Full Model with CURSMOKE*/
-proc phreg data = d.fham;
+proc phreg data = d.fham_CHD;
 	model TIMECHD*PREVCHD(1) = BMI_OW BMI_OB SEX CURSMOKE BMI_OW*SEX BMI_OB*SEX CURSMOKE*SEX/RL; 
 	strata sex;
 	contrast 'males_OW' BMI_OW 1 BMI_OW*SEX 1 CURSMOKE*SEX 1/ estimate = exp;
@@ -374,7 +370,7 @@ proc phreg data = d.fham;
 run;
 
 /* Reduced Model without CURSMOKE*/
-proc phreg data = d.fham;
+proc phreg data = d.fham_CHD;
 	model TIMECHD*PREVCHD(1) = BMI_OW BMI_OB SEX BMI_OW*SEX BMI_OB*SEX/RL; 
 	strata sex;
 	contrast 'males_OW_Drop' BMI_OW 1 BMI_OW*SEX 1 / estimate = exp;
